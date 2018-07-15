@@ -19,7 +19,16 @@ def mem_used():
     # 返回单位为MB
     return int(mem.used/1024/1024)
 
+def cpu_count():
+    # 返回CPU的逻辑个数
+    return  psutil.cpu_count()
+
+def cpu_conut_real():
+    # 返回CPU的物理个数
+    return psutil.cpu_count(logical=False)
+
 
 if __name__ == "__main__":
-    print('{0:{2}<8}:{1:<6}MB'.format(u'本机总内存为', mem_total(), chr(12288)))
-    print('{0:{2}<8}:{1:<6}MB'.format(u'本机已用内存为', mem_used(), chr(12288)))
+    print('{0:{2}<10}:{1:<6}MB'.format(u'本机总内存为', mem_total(), chr(12288)))
+    print('{0:{2}<10}:{1:<6}MB'.format(u'本机已用内存为', mem_used(), chr(12288)))
+    print('{0:{2}<10}:{1:<6}MB'.format(u'本机内核逻辑个数', cpu_count(), chr(12288)))
