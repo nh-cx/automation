@@ -2,7 +2,6 @@
 # -*- coding=utf-8 -*-
 # 学习专用
 import dns.resolver
-import os
 import http.client
 
 iplist = []
