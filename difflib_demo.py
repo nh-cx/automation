@@ -25,7 +25,6 @@ text2_lines = text2.splitlines()
 # diff = d.compare(text1_lines,text2_lines)
 # print('\n'.join(list(diff)))
 
-
 d = difflib.HtmlDiff()
 print(d.make_file(text1_lines, text2_lines))
 
