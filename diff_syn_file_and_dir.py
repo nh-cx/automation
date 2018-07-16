@@ -64,7 +64,7 @@ def main():
         # 将源目录差异路径清单对应替换成备份目录
         destination_dir = re.sub(dir1, dir2, item)
 
-        destination_files.append(destination_dirt)
+        destination_files.append(destination_dir)
 
         # 如果差异路径为目录且不存在，则在备份目录中创建
         if os.path.isdir(item):
@@ -77,6 +77,7 @@ def main():
     if createdir_bool:
         destination_files = []
         souce_files = []
+
         # 调用compareme
         souce_files = compareme(dir1, dir2)
         for item in souce_files:
