@@ -61,9 +61,9 @@ def send_html_mail(username, password, to_address):
         """
         msg = MIMEText(html_content, 'html', 'utf-8')
         # 发件人邮箱账号或者昵称
-        msg['From'] = formataddr(['发件人昵称：', username])
+        msg['From'] = formataddr([username, username])
         # 收件人邮箱账号或者昵称
-        msg['To'] = formataddr(['收件人昵称：', to_address])
+        msg['To'] = formataddr([to_address, to_address])
         # 邮件主题
         msg['Subject'] = '官网流量数据报表'
 
