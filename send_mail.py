@@ -39,6 +39,7 @@ def send_mail(username, password, to_address):
 
     return ret
 
+
 def send_html_mail(username, password, to_address):
     # 邮件发送状态
     ret = True
@@ -136,7 +137,7 @@ def send_img_mail(username, password, to_address):
         # MIMEMultipart对象附加MIMEText的内容
         msg.attach(msgtext)
 
-        #使用MIMEMultipart对象附加MIMEImage的内容
+        # 使用MIMEMultipart对象附加MIMEImage的内容
         msg.attach(addimg("img/bytes_io.png","io"))
         msg.attach(addimg("img/myisam_key_hit.png","key_hit"))
         msg.attach(addimg("img/os_mem.png","men"))
@@ -186,7 +187,7 @@ def send_img_mail_withfiles(username, password, to_address):
         # MIMEMultipart对象附加MIMEText的内容
         msg.attach(msgtext)
 
-        #使用MIMEMultipart对象附加MIMEImage的内容
+        # 使用MIMEMultipart对象附加MIMEImage的内容
         msg.attach(addimg("img/myisam_key_hit.png","myisam_key_hit"))
 
         # # 创建一个MIMEText对象，附加week_report.xlsx文档
@@ -206,7 +207,6 @@ def send_img_mail_withfiles(username, password, to_address):
         attach["Content-Disposition"] = "attachment;filename=%s"%Header(rarFilePath,'utf-8').encode()
         print(str(attach["Content-Disposition"]))
         msg.attach(attach)
-
 
         # 发件人邮箱账号或者昵称
         msg['From'] = formataddr(['萌萌机器人', username])
