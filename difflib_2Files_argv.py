@@ -4,6 +4,7 @@
 import difflib
 import sys
 
+
 def readfile(filename):
     try:
         file_handle = open(filename, 'r')

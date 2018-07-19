@@ -234,7 +234,7 @@ if __name__ == "__main__":
     username_i = input("Input username:")
     password_i = input("Input password")
     to_address_i = input("Input to address")
-    if send_img_mail_withfiles(username_i, password_i, to_address_i):
+    if send_mail(username_i, password_i, to_address_i):
         print("邮件发送成功。")
     else:
         print("邮件发送失败。")

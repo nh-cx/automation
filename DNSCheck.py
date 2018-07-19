@@ -7,6 +7,7 @@ import http.client
 iplist = []
 appdomain = "www.baidu.com"
 
+
 def get_iplist(domain=""):
     try:
         A = dns.resolver.query(domain, 'A')
@@ -20,6 +21,7 @@ def get_iplist(domain=""):
                 iplist.append(j.address)
     return True
 
+
 def checkip(ip):
     checkurl = ip + ":80"
     getcontent= ""
@@ -27,12 +29,12 @@ def checkip(ip):
     conn= http.client.HTTPConnection(checkurl)
 
     try:
-        conn.request("GET","/",headers={"Host":appdomain})
+        conn.request("GET", "/", headers={"Host":appdomain})
 
-        r=conn.getresponse()
+        r = conn.getresponse()
         getcontent = r.read(15)
     finally:
-        if getcontent==b"<!DOCTYPE html>":
+        if getcontent == b"<!DOCTYPE html>":
             print(ip + "[ok]")
         else:
             print(ip + "[Error]")

@@ -21,8 +21,6 @@ def compareme(dir1, dir2):
     only_in_one = dircomp.left_only
     # 不匹配文件及发生变化的文件
     diff_in_one = dircomp.diff_files
-    # 定义源目录绝对路径
-    dirpath = os.path.abspath(dir1)
 
     # 将更新文件名或目录追加到holderlist
     for x in only_in_one:
@@ -32,7 +30,7 @@ def compareme(dir1, dir2):
         holderlist.append(os.path.abspath(os.path.join(dir1, x)))
 
     # 判断是否存在相同子目录，以便递归
-    if len(dircomp.common_dirs)>0:
+    if len(dircomp.common_dirs) > 0:
         for item in dircomp.common_dirs:
             compareme(os.path.abspath(os.path.join(dir1, item)), os.path.abspath(os.path.join(dir2, item)))
 
@@ -50,7 +48,7 @@ def main():
 
     # 对比源目录与备份目录
     souce_files = compareme(dir1, dir2)
-    dir1 =os.path.abspath(dir1)
+    dir1 = os.path.abspath(dir1)
 
     # 备份目录路径增加"/"符
     if not str(dir2).endswith('/'):
@@ -76,7 +74,6 @@ def main():
     # 重新调用compareme函数，并重新遍历新创建目录的内容
     if createdir_bool:
         destination_files = []
-        souce_files = []
 
         # 调用compareme
         souce_files = compareme(dir1, dir2)

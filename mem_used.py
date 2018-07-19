@@ -19,9 +19,11 @@ def mem_used():
     # 返回单位为MB
     return int(mem.used/1024/1024)
 
+
 def cpu_count():
     # 返回CPU的逻辑个数
-    return  psutil.cpu_count()
+    return psutil.cpu_count()
+
 
 def cpu_conut_real():
     # 返回CPU的物理个数
