@@ -60,4 +60,63 @@ def update_rrd_file():
     update = rrdtool.updatev('Flow.rrd', '{0}:{1}:{2}'.format(str(starttime), str(total_input_traffic), str(total_output_traffic)))
     print(update)
 
-# if __name__ == "__main__":
+def graph_rrd_file():
+    # 定义图表上方大标题
+    title = u"2 Dog Home Network Traffic Flow (" + time.strftime('%Y-%m-%d', time.localtime(time.time())) + ")"
+
+    rrdtool.graph("Flow.png",
+                  "--start", "-1d",
+                  "--vertical-label=Bytes/s",
+                  # 重点解析：
+                  # "--x-grid","MINUTE:12:HOUR:1:HOUR:1:0:%H"参数的作用（从左往右进行分解）
+                  # "MINUTE:12"   ：表示控制每隔12分钟放置一根次要格线
+                  # "HOUR:1"      ：表示控制每隔1小时放置一根主要格线
+                  # "HOUR:1"      ：表示控制1小时输出一个label标签
+                  # "0:%H"        ：0表示数字对齐格线，%H表示标签以小时显示
+                  "--x-grid","MINUTE:12:HOUR:1:HOUR:1:0:%H",
+                  "--width", "650",
+                  "--height", "230",
+                  "--title", title,
+                  # 指定网卡入流量数据源DS及CF
+                  "DEF:inoctets=Flow.rrd:ens33_in:AVERAGE",
+                  # 指定网卡出流量数据源DS及CF
+                  "DEF:outoctets=Flow.rrd:ens33_out:AVERAGE",
+                  # 通过CDEF合并网卡出入流量，得出总流量total
+                  "CDEF:total=inoctets,outoctets,+",
+
+                  # 以线条方式绘制总流量
+                  "LINE1:total#FF8833:Total traffic",
+                  # 以面积方式绘制入流量
+                  "AREA:inoctets#00FF00:In traffic",
+                  # 以线条方式绘制出流量
+                  "LINE1:outoctets#0000FF:Out traffic",
+                  # 绘制水平线，作为警告线，阀值为 6.1k
+                  "HRULE:6144#FF0000:Alarm value\\r",
+                  # 将入流量换算成bit，即*8，计算结果给inbits
+                  "CDEF:inbits=inoctets,8,*",
+                  # 将出流量换算成bit，即*8，计算结果给outbits
+                  "CDEF:outbits=outoctets,8,*",
+                  # 在网格下方输出一个换行符
+                  "COMMENT:\\r",
+                  "COMMENT:\\r",
+                  # 绘制入流量平均值
+                  "GPRINT:inbits:AVERAGE:Avg In traffic\: %6.2lf %Sbps",
+                  "COMMENT: ",
+                  # 绘制入流量最大值
+                  "GPRINT:inbits:MAX:Max In traffic\: %6.2lf %Sbps",
+                  "COMMENT: ",
+                  # 绘制入流量最小值
+                  "GPRINT:inbits:MIN:Min In traffic\: %6.2lf %Sbps\\r",
+                  "COMMENT: ",
+                  # 绘制出流量平均值
+                  "GPRINT:outbits:AVERAGE:Avg OuT traffic\: %6.2lf %Sbps",
+                  "COMMENT: ",
+                  # 绘制出流量最大值
+                  "GPRINT:outbits:MAX:Max OuT traffic\: %6.2lf %Sbps",
+                  "COMMENT: ",
+                  # 绘制出流量最小值
+                  "GPRINT:outbits:MIN:MIN Out traffic\: %6.2lf %Sbps\\r"
+                  )
+    print("图表生成成功。")
+if __name__ == "__main__":
+    graph_rrd_file()
