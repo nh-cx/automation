@@ -27,6 +27,23 @@ except:
     print("Unexpected error", sys.exc_info()[0])
     exit(0)
 
+try:
+    nm.scan(hosts=hosts, arguments=' -v -sS -p  '+ port)
+except Exception as e:
+    print("Scan erro:", str(e))
 
+for host in nm.all_hosts():
+    if nm[host].state() == 'up':
+        print('-'*30)
+        print('Host: {}  ({})'.format(host, nm[host].hostname()))
+        print('State: ', nm[host].state())
+        for proto in nm[host].all_protocols():
+            print('-'*30)
+            print('Protocol: ', proto)
+
+            lport = nm[host][proto].keys()
+            list(lport).sort()
+            for port in lport:
+                print('port : {}\tstate: {}'.format(port, nm[host][proto][port]['state']))
 
 # if __name__ == "__main__":
