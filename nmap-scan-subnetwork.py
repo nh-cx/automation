@@ -27,6 +27,24 @@ except:
     print("Unexpected error", sys.exc_info()[0])
     exit(0)
 
+try:
+    # 调用扫描方法，参数指定扫描主机hosts，nmap扫描命令行参数arguments
+    nm.scan(hosts = hosts, arguments=' -v -sS -p '+port)
+except Exception as e:
+    print("Scan erro:"+str(e))
 
+# 遍历扫描主机
+for host in nm.all_hosts():
+    print('-'*30)
+    # 输出主机及主机名
+    print('Host:{0} ({1})'.format(host, nm[host].hostname()))
+    print('State:{0}'.format(nm[host].state()))
+    for proto in nm[host].all_protocols():
+        print('-'*30)
+        print('Protocol:{0}'.format(proto))
 
+        lport = nm[host][proto].keys()
+        lport.sort()
+        for port in lport:
+            print('port: {0}\tstate: {1}'.format(port,nm[host][proto][port]['state']))
 # if __name__ == "__main__":

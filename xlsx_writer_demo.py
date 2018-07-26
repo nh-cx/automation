@@ -55,10 +55,10 @@ worksheet2.write_blank(7, 0, None)
 worksheet3 = workbook.add_worksheet(u'各种表格样式操作')
 worksheet3.write('A1', 'Hello')
 # 定义一个加粗的格式对象
-cell_format = workbook.add_format({'bold':True})
+cell_format = workbook.add_format({'bold': True})
 # 设置第一行单元格高度为40，而且引用加粗格式对象
 worksheet3.set_row(0, 40, cell_format)
-worksheet3.set_row(1, None, None, {'hidden':True})
+worksheet3.set_row(1, None, None, {'hidden': True})
 
 worksheet3.write('A3', 'Hello')
 worksheet3.write('B3', 'World')
@@ -67,10 +67,10 @@ worksheet3.set_column(3, 4, 10, cell_format)
 # 设置C到D单元格宽度为20像素
 worksheet3.set_column('C:D', 20)
 # 隐藏E到G列单元格
-worksheet3.set_column('E:G', None, None, {'hidden':1})
+worksheet3.set_column('E:G', None, None, {'hidden': 1})
 
 # 在A4单元格插入python-logo.png图片，图片超链接为http://python.org
-worksheet3.insert_image('A4', 'img/python-logo.png', {'url':'http://python.org'})
+worksheet3.insert_image('A4', 'img/python-logo.png', {'url': 'http://python.org'})
 
 
 # 创建第四个工作表对象
@@ -139,24 +139,24 @@ chart.set_x_axis(
         # 设置X轴标题名称
         'name':'Earnings per Quarter',
         # 设置X轴标题字体属性
-        'name_font':{'size':14, 'bold':True},
+        'name_font': {'size':14, 'bold':True},
         # 设置X轴数字字体属性
-        'num_font':{'italic':True},
+        'num_font': {'italic':True},
     }
 )
 
 # set_size(options)方法，设置图表大小
 chart.set_size(
     {
-        'width':720,
-        'height':576
+        'width': 720,
+        'height': 576
     }
 )
 
 # set_title(options)方法，设置图表标题
 chart.set_title(
     {
-        'name':'Year End Results'
+        'name': 'Year End Results'
     }
 )
 
@@ -168,7 +168,6 @@ chart.set_table()
 
 # 在A7单元格插入图表
 worksheet4.insert_chart('A7',chart)
-
 
 
 print(workbook.filename + "创建成功")
