@@ -338,6 +338,7 @@ def readIpFile(fileName='./ipfile.json'):
 def Average(previusAverage = 0, value = 0, quantity = 1):
     return (float(previusAverage) * (int(quantity)-1) / int(quantity) ) + float(value) / int(quantity)
 
+
 try:
     # consumes-提交内容
     consumes = {}
