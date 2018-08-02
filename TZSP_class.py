@@ -30,7 +30,12 @@ sock.bind((UDP_IP, UDP_PORT))
 
 # 格式化mac地址
 def eth_addr(a):
-    b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (ord(a[0]), ord(a[1]), ord(a[2]), ord(a[3]), ord(a[4]), ord(a[5]))
+    # Test
+    print('eth_addr a is :', a)
+    # 究竟是小写x还是大写X
+    b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (a[0], a[1], a[2], a[3], a[4], a[5])
+    # Test
+    print('eth_addr b is :', b)
     return b
 
 
@@ -232,7 +237,10 @@ def processTag(tag, details=False):
         # fix3，把ord()删除
         currentTag = tag[i]
         # 获取tag[0]的ASCII数值，进行Tag的标签匹配
-        tagType = getTagType(ord(tag[0]))
+        # Test
+        print('tag[i] is ', tag[i])
+        # Fix04 Del ord()
+        tagType = getTagType(tag[0])
         # 初始化标签长度
         tagLength = 0
         # 如果匹配到的标签里面没有TAG_END和TAG_PADDING，
@@ -274,10 +282,13 @@ def processUdpData(data, addr):
 
     # 截取以太网数据包头部
     eth_header = tags[tagsLength:(14+tagsLength)]
+    # Test
+    print('tagsLength is :', tagsLength)
     # 截取以太网数据内容
     eth_data = tags[(14+tagsLength):]
     # 匹配以太网数据包类型
-    etherType = getEtherType(ord(eth_header[12])*256 + ord(eth_header[13]))
+    # Fix05 Del ord()
+    etherType = getEtherType(eth_header[12]*256 + eth_header[13])
     # 通过struct模块里面的unpack将字符串解包成为变量,
     # s->char[] / string没有长度 6s就是一个6个字符的字符串 ,
     # H->unsigned short / integer Standard size 2  H就是一个1位的数字，如5，
@@ -286,6 +297,8 @@ def processUdpData(data, addr):
     # ntohs()--"Network to Host Short"，主要是为了兼容各种CPU生成的代码
     eth_protocol = socket.ntohs(eth[2])
     # mac地址描述
+    # Test
+    print('processUdpData eth_header is :', eth_header)
     mac_details = 'Destination MAC : ' + eth_addr(eth_header[0:6]) + ' Source MAC : ' + eth_addr(eth_header[6:12]) + ' Protocol : ' + str(eth_protocol)
 
     # 解包IP数据包
@@ -339,9 +352,9 @@ try:
     while True:
         # 通过socket接收数据
         data, addr = sock.recvfrom(1024)
-
-        print(data)
-        print(addr)
+        # Test
+        print('FF data is :', data)
+        print('FF addr is :', addr)
 
         # 读取UDP数据 传入数据和mac地址
         consumesData = processUdpData(data, addr)
