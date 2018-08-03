@@ -31,11 +31,11 @@ sock.bind((UDP_IP, UDP_PORT))
 # 格式化mac地址
 def eth_addr(a):
     # Test
-    print('eth_addr a is :', a)
+    # print('eth_addr a is :', a)
     # 究竟是小写x还是大写X
     b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (a[0], a[1], a[2], a[3], a[4], a[5])
     # Test
-    print('eth_addr b is :', b)
+    # print('eth_addr b is :', b)
     return b
 
 
@@ -227,7 +227,7 @@ def getEtherType(etherInt):
         return "UKNOW PROTOCOL:" + str(etherInt)
 
 
-# 进程标签（计算标签长度？读取标签？）
+# 获取Tagged Fields字段的Tag Type
 def processTag(tag, details=False):
     currentTag = None
     i = 0
@@ -264,22 +264,30 @@ def processUdpData(data, addr):
     headers = data[0:4]
 
     # 剩下的数据，全部放到tags里面
-    tags = data
+    tags = data[4:]
 
+    # Test -OK!
+    print('tags data is:', tags)
     # 把头部第二个字节转换成ASCII，然后匹配数据类型
     # #GetPrint
     # Fix01-Del ord()
     # print(type(headers[1]))--待翻查
     tagType = getType(headers[1])
 
-    # 拼接协议字符串（ASCII数值）
+    # Test
+    # print('Header type is :', tagType)
+    # 获取Encapsulated Protocol,拼接协议字符串（ASCII数值）
     # Fix02-ord()引起的拼接错误，不用转换，直接用数字既可以匹配到hex（16进制）
+    # Test
     protocol = (headers[2]) * 256 + (headers[3])
-    # 获取协议类型
     protocolStr = getProtocol(protocol)
+    # Test -OK
+    # print('protocolStr is:', protocolStr)
     # 读取Tag标签类型（传输状态？）
-    tagsLength = processTag(tags)
-
+    # tagsLength = processTag(tags)
+    tagsLength = 0
+    # Test
+    print('tagsLength is :', tagsLength)
     # 截取以太网数据包头部
     eth_header = tags[tagsLength:(14+tagsLength)]
     # Test
@@ -288,7 +296,11 @@ def processUdpData(data, addr):
     eth_data = tags[(14+tagsLength):]
     # 匹配以太网数据包类型
     # Fix05 Del ord()
-    etherType = getEtherType(eth_header[12]*256 + eth_header[13])
+    # Test
+    print('eth_header is:', eth_header)
+    print('eth_header[12] is:', eth_header[12])
+    print('eth_header[13] is:', eth_header[13])
+    etherType = getEtherType(eth_header[12] + eth_header[13])
     # 通过struct模块里面的unpack将字符串解包成为变量,
     # s->char[] / string没有长度 6s就是一个6个字符的字符串 ,
     # H->unsigned short / integer Standard size 2  H就是一个1位的数字，如5，
@@ -306,7 +318,7 @@ def processUdpData(data, addr):
     # 数据包内容
     packet = tags[15:]
     # 拼接字符串
-    hexStr = "".join(tags[21:])
+    hexStr = "".join(str(tags[21:]))
     # ip头部
     # B->unsigned char / integer Standard size 1
     # s->char[] / string没有长度 4s就是一个4个字符的字符串
