@@ -300,7 +300,7 @@ def processUdpData(data, addr):
     print('eth_header is:', eth_header)
     print('eth_header[12] is:', eth_header[12])
     print('eth_header[13] is:', eth_header[13])
-    etherType = getEtherType(eth_header[12] + eth_header[13])
+    etherType = getEtherType(tags[13]*256 + tags[14])
     # 通过struct模块里面的unpack将字符串解包成为变量,
     # s->char[] / string没有长度 6s就是一个6个字符的字符串 ,
     # H->unsigned short / integer Standard size 2  H就是一个1位的数字，如5，
@@ -323,6 +323,7 @@ def processUdpData(data, addr):
     # B->unsigned char / integer Standard size 1
     # s->char[] / string没有长度 4s就是一个4个字符的字符串
     iph = unpack('!BBHHHBBH4s4s', packet[:20])
+    print('iph is :', iph)
     # ip版本号
     version_ihl = iph[0]
     version = version_ihl >> 4
@@ -365,13 +366,13 @@ try:
         # 通过socket接收数据
         data, addr = sock.recvfrom(1024)
         # Test
-        print('FF data is :', data)
+        print('FF data is :', str(data))
         print('FF addr is :', addr)
 
         # 读取UDP数据 传入数据和mac地址
         consumesData = processUdpData(data, addr)
 
-        print(str(consumesData))
+        print("consumesData", str(consumesData))
         # for key in consumesData:
         #     print(key+':'+consumesData[key])
 
