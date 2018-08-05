@@ -376,6 +376,7 @@ try:
         # for key in consumesData:
         #     print(key+':'+consumesData[key])
 
+        mac
     print('closed!')
     s.close()
 finally:
