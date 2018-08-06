@@ -16,6 +16,7 @@ import math
 import curses
 from struct import *
 from operator import itemgetter
+import dpkt
 
 # 格式化mac地址
 def eth_addr(a):
@@ -349,6 +350,29 @@ if __name__ == "__main__":
             # print(iph[1])
             # print(iph[2])
             # print(iph[3])
+            packet = data[19:]
+            ip_header = packet[0:20]
+            iph = unpack('!BBHHHBBH4s4s', ip_header)
+
+            version_ihl = iph[0]
+            version = version_ihl >> 4
+            ihl = version_ihl & 0xF
+            iph_length = ihl * 4
+            ttl = iph[5]
+            protocol = iph[6]
+            s_addr = socket.inet_ntoa(iph[8])
+            d_addr = socket.inet_ntoa(iph[9])
+
+            print('version ', version, ' ttl ', ttl, ' s_addr ', s_addr, ' d_addr ', d_addr)
+            print('other data: ', packet[20:])
+
+            eth = dpkt.ethernet.Ethernet(data[5:])
+            ip = eth.data
+            src = socket.inet_ntoa(ip.src)
+            dst = socket.inet_ntoa(ip.dst)
+            raw = ip.pack()
+            print('dpkt src: ', src, ' dpkt dst: ', dst)
+            print('raw is :', raw)
         print('closed!')
         s.close()
     finally:
