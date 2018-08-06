@@ -373,6 +373,7 @@ if __name__ == "__main__":
             raw = ip.pack()
             print('dpkt src: ', src, ' dpkt dst: ', dst)
             print('raw is :', raw)
+
         print('closed!')
         s.close()
     finally:
