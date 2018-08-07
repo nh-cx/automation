@@ -18,6 +18,7 @@ from struct import *
 from operator import itemgetter
 import dpkt
 
+
 # 格式化mac地址
 def eth_addr(a):
     b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (a[0], a[1], a[2], a[3], a[4], a[5])
@@ -95,6 +96,19 @@ def processTag(tag, details=False):
             print("tag length: %r" % tagLength)
 
     return i
+
+
+# 获取Tagged Fields字段的信息，返回Tag Type，Tag内容，Tag Length
+# 要校验tag_length=0和tag_length = other_data[1]对后续数据的代入公式计算出来封装的包的是否有偏差
+def GetTagged_data(other_data):
+    tagged_data = None
+    tag_length = 0
+    if other_data[0] == 1:
+        return 'TAG_END', tagged_data, tag_length
+    tag_type = getTagType(other_data[0])
+    tag_length = other_data[1]
+    tagged_data = other_data[2:2+tag_length]
+    return tag_type, tagged_data, tag_length
 
 
 # 获取以太网（三层)数据类型（如IPv4）
@@ -241,73 +255,6 @@ def getEtherType(etherInt):
         return "UKNOW PROTOCOL:" + str(etherInt)
 
 
-# 读取UDP数据？传入数据和mac地址
-def processUdpData(data, addr):
-    # 截取头部，数据0-3前4个字符
-    headers = data[0:4]
-
-    # 剩下的数据，全部放到tags里面
-    tags = data
-
-    # 获取Header-Type类型
-    tagType = getType(headers[1])
-
-    # headers采用 big-endian ordering（大端）方式存放数据
-    # headers[2]为高位
-    # headers[3]为低位
-    protocol = headers[2] * 256 + headers[3]
-    # 获取Header-Type类型
-    protocolStr = getProtocol(protocol)
-    # 读取Tag标签类型（传输状态？）
-    tagsLength = processTag(tags)
-
-    # 截取以太网数据包头部
-    eth_header = tags[tagsLength:(14+tagsLength)]
-    # 截取以太网数据内容
-    eth_data = tags[(14+tagsLength):]
-    # 匹配以太网数据包类型
-    etherType = getEtherType(eth_header[12]*256 + eth_header[13])
-    # 通过struct模块里面的unpack将字符串解包成为变量,
-    # s->char[] / string没有长度 6s就是一个6个字符的字符串 ,
-    # H->unsigned short / integer Standard size 2  H就是一个1位的数字，如5，
-    # !为大端模式标准对齐方式
-    eth = unpack('!6s6sH', eth_header)
-    # ntohs()--"Network to Host Short"，主要是为了兼容各种CPU生成的代码
-    eth_protocol = socket.ntohs(eth[2])
-    # mac地址描述
-    mac_details = 'Destination MAC : ' + eth_addr(eth_header[0:6]) + ' Source MAC : ' + eth_addr(eth_header[6:12]) + ' Protocol : ' + str(eth_protocol)
-
-    # 解包IP数据包
-    # GetPrint
-    # 数据包内容
-    packet = tags[15:]
-    # 拼接字符串
-    hexStr = "".join(str(tags[21:]))
-    # ip头部
-    # B->unsigned char / integer Standard size 1
-    # s->char[] / string没有长度 4s就是一个4个字符的字符串
-    iph = unpack('!BBHHHBBH4s4s', packet[:20])
-    # ip版本号
-    version_ihl = iph[0]
-    version = version_ihl >> 4
-    ihl = version_ihl & 0xF
-    # ip包长度
-    iph_length = ihl * 4
-    # ttl值
-    ttl = iph[5]
-    # 协议类型
-    protocol = iph[6]
-    # 源地址
-    s_addr = socket.inet_ntoa(iph[8])
-    # 目标地址
-    d_addr = socket.inet_ntoa(iph[9])
-    # 连接信息
-    connection_detail = ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr)
-
-    # 返回字典，源地址，目标地址，以太网类型，长度，连接详细信息，mac详细信息
-    return {"s_addr": s_addr, "d_addr": d_addr, "etherType": etherType, "len": len(eth_data), "connection_detail": connection_detail, "mac_details": mac_details}
-
-
 if __name__ == "__main__":
     # 配置连接IP和端口号
     UDP_IP = '0.0.0.0'
@@ -327,12 +274,6 @@ if __name__ == "__main__":
             print('FF data is :', str(data))
             print('FF addr is :', addr)
 
-            # # 读取UDP数据 传入数据和mac地址
-            # consumesData = processUdpData(data, addr)
-            #
-            # print("consumesData", str(consumesData))
-            # # for key in consumesData:
-            # #     print(key+':'+consumesData[key])
             print(getType(data[1]))
             print(getProtocol(data[2] * 256 + data[3]))
             print(getTagType(data[4]))
@@ -370,9 +311,15 @@ if __name__ == "__main__":
             ip = eth.data
             src = socket.inet_ntoa(ip.src)
             dst = socket.inet_ntoa(ip.dst)
-            raw = ip.pack()
+
             print('dpkt src: ', src, ' dpkt dst: ', dst)
-            print('raw is :', raw)
+
+            tcp = ip.data
+
+            if tcp.dport == 80 and len(tcp.data) > 0:
+                http = dpkt.http.Request(tcp.data)
+                print('uri is :::', http.uri)
+                print('http header is :::', http.headers)
 
         print('closed!')
         s.close()
