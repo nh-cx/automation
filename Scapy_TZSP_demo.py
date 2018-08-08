@@ -17,7 +17,7 @@ def writep(packet):
 
     # remove 4 bytes of header plus first 2 bytes of tagged fields, last byte will give us how many more bytes we need to remove
 
-    tzsp_minus_header_str = tzsp_packet_str[5:]
+    tzsp_minus_header_str = tzsp_packet_str[6:]
 
     try:
 

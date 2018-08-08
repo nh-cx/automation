@@ -11,11 +11,12 @@ s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.bind(address)
 
 while 1:
-    data, addr = s.recvfrom(2048)
+    data, addr = s.recvfrom(4096)
     if not data:
         break
     print('Got data from', addr)
     print(data)
+
 
 print('closed!')
 s.close()

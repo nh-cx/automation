@@ -2,7 +2,7 @@
 # -*- coding=utf-8 -*-
 # 学习专用
 # ======程序说明======
-# TZSP抄一遍
+# TZSP类
 # 
 # ==================
 import socket
@@ -28,18 +28,14 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind((UDP_IP, UDP_PORT))
 
 
-# # 按Ctrl+C时候不想看到Traceback那种不友好的信息
-# def signal_handler(signal, frame):
-#     sys.exit(0)
-#
-#
-# # # 捕获信号用途
-# signal_handler(signal.SIGINT, signal_handler)
-
-
 # 格式化mac地址
 def eth_addr(a):
-    b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (ord(a[0]), ord(a[1]), ord(a[2]), ord(a[3]), ord(a[4]), ord(a[5]))
+    # Test
+    # print('eth_addr a is :', a)
+    # 究竟是小写x还是大写X
+    b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (a[0], a[1], a[2], a[3], a[4], a[5])
+    # Test
+    # print('eth_addr b is :', b)
     return b
 
 
@@ -231,16 +227,20 @@ def getEtherType(etherInt):
         return "UKNOW PROTOCOL:" + str(etherInt)
 
 
-# 进程标签（计算标签长度？读取标签？）
+# 获取Tagged Fields字段的Tag Type
 def processTag(tag, details=False):
     currentTag = None
     i = 0
     # 直到匹配到"TAG_END", "TAG_PADDING"就退出循环
     while currentTag not in [0x00, 0x01]:
         # 把tag[i]转换成ASCII数值
-        currentTag = ord(tag[i])
+        # fix3，把ord()删除
+        currentTag = tag[i]
         # 获取tag[0]的ASCII数值，进行Tag的标签匹配
-        tagType = getTagType(ord(tag[0]))
+        # Test
+        print('tag[i] is ', tag[i])
+        # Fix04 Del ord()
+        tagType = getTagType(tag[0])
         # 初始化标签长度
         tagLength = 0
         # 如果匹配到的标签里面没有TAG_END和TAG_PADDING，
@@ -264,25 +264,43 @@ def processUdpData(data, addr):
     headers = data[0:4]
 
     # 剩下的数据，全部放到tags里面
-    tags = data
+    tags = data[4:]
 
+    # Test -OK!
+    print('tags data is:', tags)
     # 把头部第二个字节转换成ASCII，然后匹配数据类型
     # #GetPrint
-    tagType = getType(ord(headers[1]))
+    # Fix01-Del ord()
+    # print(type(headers[1]))--待翻查
+    tagType = getType(headers[1])
 
-    # 拼接协议字符串（ASCII数值）
-    protocol = ord(headers[2]) * 256 + ord(headers[3])
-    # 获取协议类型
+    # Test
+    # print('Header type is :', tagType)
+    # 获取Encapsulated Protocol,拼接协议字符串（ASCII数值）
+    # Fix02-ord()引起的拼接错误，不用转换，直接用数字既可以匹配到hex（16进制）
+    # Test
+    protocol = (headers[2]) * 256 + (headers[3])
     protocolStr = getProtocol(protocol)
+    # Test -OK
+    # print('protocolStr is:', protocolStr)
     # 读取Tag标签类型（传输状态？）
-    tagsLength = processTag(tags)
-
+    # tagsLength = processTag(tags)
+    tagsLength = 0
+    # Test
+    print('tagsLength is :', tagsLength)
     # 截取以太网数据包头部
     eth_header = tags[tagsLength:(14+tagsLength)]
+    # Test
+    print('tagsLength is :', tagsLength)
     # 截取以太网数据内容
     eth_data = tags[(14+tagsLength):]
     # 匹配以太网数据包类型
-    etherType = getEtherType(ord(eth_header[12])*256 + ord(eth_header[13]))
+    # Fix05 Del ord()
+    # Test
+    print('eth_header is:', eth_header)
+    print('eth_header[12] is:', eth_header[12])
+    print('eth_header[13] is:', eth_header[13])
+    etherType = getEtherType(tags[13]*256 + tags[14])
     # 通过struct模块里面的unpack将字符串解包成为变量,
     # s->char[] / string没有长度 6s就是一个6个字符的字符串 ,
     # H->unsigned short / integer Standard size 2  H就是一个1位的数字，如5，
@@ -291,6 +309,8 @@ def processUdpData(data, addr):
     # ntohs()--"Network to Host Short"，主要是为了兼容各种CPU生成的代码
     eth_protocol = socket.ntohs(eth[2])
     # mac地址描述
+    # Test
+    print('processUdpData eth_header is :', eth_header)
     mac_details = 'Destination MAC : ' + eth_addr(eth_header[0:6]) + ' Source MAC : ' + eth_addr(eth_header[6:12]) + ' Protocol : ' + str(eth_protocol)
 
     # 解包IP数据包
@@ -298,11 +318,12 @@ def processUdpData(data, addr):
     # 数据包内容
     packet = tags[15:]
     # 拼接字符串
-    hexStr = "".join(tags[21:])
+    hexStr = "".join(str(tags[21:]))
     # ip头部
     # B->unsigned char / integer Standard size 1
     # s->char[] / string没有长度 4s就是一个4个字符的字符串
     iph = unpack('!BBHHHBBH4s4s', packet[:20])
+    print('iph is :', iph)
     # ip版本号
     version_ihl = iph[0]
     version = version_ihl >> 4
@@ -324,14 +345,14 @@ def processUdpData(data, addr):
     return {"s_addr": s_addr, "d_addr": d_addr, "etherType": etherType, "len": len(eth_data), "connection_detail": connection_detail, "mac_details": mac_details}
 
 
-# 加载./ipfile.json文件，如果读取失败就返回False
-def readIpFile(fileName='./ipfile.json'):
-    if os.path.isfile(fileName):
-        with open(fileName, 'r') as configFile:
-            ipNames = json.load(configFile)
-        return ipNames
-    else:
-        return False
+# # 加载./ipfile.json文件，如果读取失败就返回False
+# def readIpFile(fileName='./ipfile.json'):
+#     if os.path.isfile(fileName):
+#         with open(fileName, 'r') as configFile:
+#             ipNames = json.load(configFile)
+#         return ipNames
+#     else:
+#         return False
 
 
 # 计算平均流量
@@ -340,173 +361,25 @@ def Average(previusAverage = 0, value = 0, quantity = 1):
 
 
 try:
-    # consumes-提交内容
-    consumes = {}
-    average_consumes = {}
-    average_count = {}
-    internal_conections = {}
-    # statistics-统计，  协议-包数量的字典
-    statistics = {"protocols":{}, "packages_count":{}}
     encoding = "utf-8"
-    # 通过argv，接受-h的historyEnabled参数，决定是否执行记录
-    historyEnabled = False
-    if "-h" in sys.argv:
-        historyEnabled = True
-    # 初始化历史记录列表
-    history_lines = []
-    # 初始化包数量统计历史记录列表
-    statistics_lines = []
-    available = True
-    # 初始化绘图模式
-    stdscr = curses.initscr()
-    # 加载./ipfile.json文件
-    ipNames = readIpFile()
-    # 绘图
-    curses.nocbreak()
-    stdscr.keypad(1)
-    curses.echo()
-    curses.curs_set(0)
-    stdscr.border(0)
-    rows, columns = stdscr.getmaxyx()
-    columns -= 2
-    maxrows = (rows/2-3)
-    consums_panel = curses.newpad((rows - 2) / 2, (columns - 2) / 2)
-    consums_panel.border(0)
-    average_panel = curses.newpad((rows - 2) / 2, (columns - 2) / 2)
-    average_panel.border(0)
-
-    log_panel = curses.newpad((rows - 2) / 2, (columns - 2) / 2)
-    log_panel.border(0)
-    danger_logs = curses.newpad((rows - 2) / 2, (columns - 2) / 2)
-    danger_logs.border(0)
-    log_panel_rows, log_panel_columns = log_panel.getmaxyx()
-    log_panel_rows -= 2
-    stdscr.refresh()
-    consums_panel.refresh(0, 0, 1, 2, rows, columns)
-    average_panel.refresh(0, 0, 1, (columns / 2) + 2, rows, columns)
-    log_panel.refresh(0, 0, (rows / 2), 2, rows + 2, columns)
-    danger_logs.refresh(0, 0, (rows / 2), (columns / 2) + 2, rows + 2, columns)
-
-    # 初始化准备接收数据的参数
-    line = 0
-    consum_msg = []
-    average_msg = []
-    internal_conections_msg=[]
-    # 开始接收数据
     while True:
         # 通过socket接收数据
         data, addr = sock.recvfrom(1024)
+        # Test
+        print('FF data is :', str(data))
+        print('FF addr is :', addr)
 
-        # 读取UDP数据 传入数据和mac地址 consumes-提交内容
+        # 读取UDP数据 传入数据和mac地址
         consumesData = processUdpData(data, addr)
 
-        # 如果历史记录超过10万条，只保留最后1000条数据
-        if len(history_lines) > 100000:
-            history_lines = history_lines[-1000:]
-        # 把链接详细信息添加到历史记录，columns-5
-        # GetPrint
-        history_lines.append(consumesData['connection_detail'].ljust(columns-5))
+        print("consumesData", str(consumesData))
+        # for key in consumesData:
+        #     print(key+':'+consumesData[key])
 
-        if consumesData['etherType'] not in statistics['protocols']:
-            statistics['protocols'][consumesData['etherType']] = 0
-
-        statistics['protocols'][consumesData['etherType']] += 1
-
-        # 初始化定时器
-        timer = math.floor((time.time() % 2.0))
-
-        # 判断ip地址，是否在192.168.x.x的子网，endswith(".1")应该是endswith(".0")？
-        if "192.168." in str(consumesData['d_addr']) and "192.168." in str(consumesData['s_addr']) and not str(consumesData['s_addr']).endswith(".1")  and not str(consumesData['d_addr']).endswith(".1") and not str(consumesData['d_addr']).endswith(".255") and not str(consumesData['s_addr']).endswith(".255"):
-            # 获取源IP地址
-            ipSource = consumesData['s_addr']
-            # 判断ip地址是否在./ipfile.json文件中
-            if ipSource in ipNames:
-                ipSource = ipNames[consumesData['s_addr']]
-            ipDestination = consumesData['d_addr']
-            if ipDestination in ipNames:
-                ipDestination = ipNames[consumesData['d_addr']]
-            internalKey = ipSource+ ' to '+ ipDestination
-            if internalKey not in internal_conections:
-                internal_conections[internalKey]=0
-            internal_conections[internalKey] += 1
-
-        if "192.168." in str(consumesData['d_addr']):
-            d_addr = str(consumesData['d_addr'])
-            size = consumesData['len']
-            if d_addr not in consumes:
-                consumes[d_addr] = 0
-            consumes[d_addr] += size
-
-        if timer == 1:
-            available = True
-
-        if timer == 0 and available ==True:
-            consum_msg = []
-            average_msg = ["Promedio:"]
-            internal_conections_msg = ["Conexiones Internas:"]
-            for ip, size in sorted(consumes.items(), key=itemgetter(1), reverse=True):
-                kbps_size = round((size/4)/1024)*6
-                ipLabel = ip
-                if ip in ipNames:
-                    ipLabel = ipNames[ip]
-                if kbps_size != 0:
-                    consum_msg.append(str("IP: " + ipLabel + " - " +  str(round((size/4)/1024)*6).strip() + " kb/s - " + str(size/2)).ljust((columns/2)-7))
-                    if ip not in average_count:
-                        average_count[ip] = 0
-                    if ip not in average_consumes:
-                        average_consumes[ip] = 0
-                    if kbps_size > 0:
-                        average_count[ip] += 1
-                        average_consumes[ip] = Average(average_consumes[ip], kbps_size, average_count[ip])
-                else:
-                    consum_msg.append("".ljust(columns / 2 - 7))
-                consumes[ip] = 0
-            for ip, average in sorted(average_consumes.items(), key=itemgetter(1), reverse=True):
-                ipLabel = ip
-                if ip in ipNames:
-                    ipLabel = ipNames[ip]
-                if average > 0:
-                    average_msg.append(str(ipLabel + " - " + str(round(average)).strip() + " kb/s").ljust((columns / 2) - 7))
-            for label, count in sorted(internal_conections.items(), key=itemgetter(1), reverse=True):
-                if count > 0:
-                    internal_conections_msg.append(label + " - " + str(count).ljust(10))
-            available = False
-            j = 1
-            for msg in consum_msg[:maxrows]:
-                consums_panel.addstr(j, 2, msg)
-                j += 1
-            m = 1
-            for msg in average_msg[:maxrows]:
-                average_panel.addstr(m,2,msg)
-                m += 1
-            k=1
-            for msg in internal_conections_msg[:maxrows]:
-                danger_logs.addstr(k,2,msg)
-                k += 1
-
-        if historyEnabled:
-            h = 1
-            for log in history_lines[-(rows/2-3):]:
-                log_panel.addstr(h, 2, log.ljust(columns/2 - 7))
-                h += 1
-        else:
-            statistics_lines = ["Statistics:"]
-            for protocol, count in sorted(statistics['protocols'].items(), key=itemgetter(1), reverse=True):
-                statistics_lines.append(protocol + " - uses: " + str(count))
-            z = 1
-            for msg in statistics_lines[:maxrows]:
-                log_panel.addstr(z, 2, msg.ljust(columns/2 - 7))
-                z += 1
-        consums_panel.refresh(0, 0, 1, 2, rows, columns)
-        average_panel.refresh(0, 0, 1, (columns / 2) + 2, rows, columns)
-        log_panel.refresh(0, 0, (rows / 2), 2, rows + 2, columns)
-        danger_logs.refresh(0, 0, (rows / 2), (columns / 2) + 2, rows + 2, columns)
-
+        mac
+    print('closed!')
+    s.close()
 finally:
-    curses.nocbreak()
-    stdscr.keypad(0)
-    curses.echo()
-    curses.endwin()
     print("Bye :D")
 
 
@@ -518,4 +391,39 @@ finally:
 
 
 
-# if __name__ == "__main__":
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
