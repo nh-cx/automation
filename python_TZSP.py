@@ -94,60 +94,63 @@ def get_encapsulated_packet(all_data):
     encapsulated_packet = all_data[7 + tag_data_length:]
     return encapsulated_packet
 
-
-if __name__ == "__main__":
-    import socket
-    # from struct import *
-    import dpkt
-    from sys import exit
-    # 配置连接IP和端口号
-    UDP_IP = '0.0.0.0'
-    UDP_PORT = 9999
-
-    # 创建socket，IPv4，UDP协议的实例
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-    # 对实例端口进行绑定
-    sock.bind((UDP_IP, UDP_PORT))
-    # encoding = "utf-8"
-    while True:
-        try:
-            # 通过socket接收数据
-            data, addr = sock.recvfrom(1024)
-            # Test
-            # print('RAW data is :', str(data))
-            # print('RAW addr is :', addr)
-            #
-            # print('TZSP type is:', getType(data))
-            # print('TZSP protocol is:', getProtocol(data))
-            # print('TZSP TagType is:', getTagType(data))
-
-            encapsulated_packet_data = get_encapsulated_packet(data)
-
-            eth = dpkt.ethernet.Ethernet(encapsulated_packet_data)
-            ip = eth.data
-            src = socket.inet_ntoa(ip.src)
-            dst = socket.inet_ntoa(ip.dst)
-
-            # print('dpkt src: ', src, ' dpkt dst: ', dst)
-
-            tcp = ip.data
-
-            if tcp.dport == 80 and len(tcp.data) > 0:
-                http = dpkt.http.Request(tcp.data)
-                if http.uri is not None:
-                    # print('uri is :::', http.uri)
-                    # print('http header is :::', http.headers)
-                    URL = http.headers['host']+http.uri
-                    print('URL is :', URL)
-                    # if 'user-agent' in http.headers.keys():
-                    #     print('user-agent is :', http.headers['user-agent'])
-                    #     print('http header is :::', http.headers)
-        except Exception as e:
-            print('error at : ', encapsulated_packet_data)
-            print('error info :', str(e))
-            continue
-        except KeyboardInterrupt:
-            print('程序终止。')
-            sock.close()
-            exit()
+#
+# if __name__ == "__main__":
+#     import socket
+#     # from struct import *
+#     import dpkt
+#     from sys import exit
+#     # 配置连接IP和端口号
+#     UDP_IP = '0.0.0.0'
+#     UDP_PORT = 9999
+#
+#     # 创建socket，IPv4，UDP协议的实例
+#     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#
+#     # 对实例端口进行绑定
+#     sock.bind((UDP_IP, UDP_PORT))
+#     # encoding = "utf-8"
+#     while True:
+#         try:
+#             # 通过socket接收数据
+#             data, addr = sock.recvfrom(1024)
+#             # Test
+#             # print('RAW data is :', str(data))
+#             # print('RAW addr is :', addr)
+#             #
+#             # print('TZSP type is:', getType(data))
+#             # print('TZSP protocol is:', getProtocol(data))
+#             # print('TZSP TagType is:', getTagType(data))
+#
+#             encapsulated_packet_data = get_encapsulated_packet(data)
+#
+#             eth = dpkt.ethernet.Ethernet(encapsulated_packet_data)
+#             ip = eth.data
+#             src = socket.inet_ntoa(ip.src)
+#             dst = socket.inet_ntoa(ip.dst)
+#
+#             # print('dpkt src: ', src, ' dpkt dst: ', dst)
+#
+#             tcp = ip.data
+#
+#             if tcp.dport == 80 and len(tcp.data) > 0:
+#                 http = dpkt.http.Request(tcp.data)
+#                 if http.uri is not None:
+#                     # print('uri is :::', http.uri)
+#                     # print('http header is :::', http.headers)
+#                     URL = http.headers['host']+http.uri
+#                     print('URL is :', URL)
+#                     # if 'user-agent' in http.headers.keys():
+#                     #     print('user-agent is :', http.headers['user-agent'])
+#                     #     print('http header is :::', http.headers)
+#         except Exception as e:
+#             error_at = ''.join(['\\x%02x' % b for b in data])
+#             error_at2 = ''.join(['\\x%02x' % b for b in encapsulated_packet_data])
+#             print('error at : ', error_at)
+#             print('error at : ', error_at2)
+#             print('error info :', str(e))
+#             continue
+#         except KeyboardInterrupt:
+#             print('程序终止。')
+#             sock.close()
+#             exit()
