@@ -94,6 +94,12 @@ def get_encapsulated_packet(all_data):
     encapsulated_packet = all_data[7 + tag_data_length:]
     return encapsulated_packet
 
+
+# 格式化mac地址
+def eth_addr(a):
+    b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (a[0], a[1], a[2], a[3], a[4], a[5])
+    return b
+
 #
 # if __name__ == "__main__":
 #     import socket
