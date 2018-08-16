@@ -60,18 +60,18 @@ def main():
                         # if 'user-agent' in http.headers.keys():
                         #     print('user-agent is :', http.headers['user-agent'])
                         #     print('http header is :::', http.headers)
-                        print('i_src_ip is :', src)
-                        print('i_dst_ip is :', dst)
-                        print('i_src_mac is :', src_mac)
+                        # print('i_src_ip is :', src)
+                        # print('i_dst_ip is :', dst)
+                        # print('i_src_mac is :', src_mac)
                         print('URL is :', URL)
-                        print('i_v_system is :', http.headers['user-agent'])
+                        # print('i_v_system is :', http.headers['user-agent'])
                         src_str = "\'"+str(src)+"\'"
                         dst_str = "\'"+str(dst)+"\'"
                         src_mac_str = "\'"+str(src_mac)+"\'"
                         URL_str = "\'"+str(URL)+"\'"
                         http_headers_str = "\'"+str(http.headers['user-agent'])+"\'"
                         str_execute = "insert into urllist(src_ip, dst_ip, src_mac, url, v_system, v_time) values ("+src_str+","+dst_str+","+src_mac_str+","+URL_str+"::varchar(500), "+http_headers_str+"::varchar(150), current_timestamp)"
-                        print(str_execute)
+                        # print(str_execute)
                         cursor.execute(str_execute)
                         conn.commit()
 
