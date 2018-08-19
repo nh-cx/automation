@@ -50,6 +50,13 @@ def main():
 
             tcp = ip.data
 
+            # # print(src_mac)
+            # print(src)
+            # # print(dst)
+            # ssl2 = dpkt.ssl.SSL2.unpack(encapsulated_packet_data)
+            # sslstr = ssl2.len
+            # print(sslstr)
+
             if tcp.dport == 80 and len(tcp.data) > 0:
                 http = dpkt.http.Request(tcp.data)
                 if http.uri is not None:
@@ -74,8 +81,10 @@ def main():
                         # print(str_execute)
                         cursor.execute(str_execute)
                         conn.commit()
-
-        except Exception:
+            elif tcp.dport == 443 and len(tcp.data) > 0:
+                pass
+        except Exception as e:
+            print(str(e))
             continue
         except KeyboardInterrupt:
             print('程序终止。')
