@@ -50,12 +50,11 @@ def main():
 
             tcp = ip.data
 
-            # # print(src_mac)
-            # print(src)
-            # # print(dst)
-            # ssl2 = dpkt.ssl.SSL2.unpack(encapsulated_packet_data)
-            # sslstr = ssl2.len
-            # print(sslstr)
+            # print(src_mac)
+            print(src)
+            # print(dst)
+            # http = dpkt.http.Response(encapsulated_packet_data)
+            # print(http)
 
             if tcp.dport == 80 and len(tcp.data) > 0:
                 http = dpkt.http.Request(tcp.data)
