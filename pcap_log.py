@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
 """Parser for PCAP files."""
 
-# import binascii
-# import operator
+import binascii
+import operator
 import socket
 
 import dpkt
 
+from plaso.containers import time_events
+from plaso.lib import errors
+from plaso.lib import eventdata
+from plaso.parsers import interface
+from plaso.parsers import manager
 
 __author__ = 'Dominique Kilman (lexistar97@gmail.com)'
 
@@ -435,361 +440,407 @@ class Stream(object):
             self.stream_data = b''.join(clean_data)
 
 
-# class PcapEvent(time_events.PosixTimeEvent):
-#     """Convenience class for a PCAP record event."""
-#
-#     DATA_TYPE = u'metadata:pcap'
-#
-#     def __init__(self, timestamp, usage, stream_object):
-#         """Initializes the event.
-#
-#         Args:
-#           timestamp: The POSIX value of the timestamp.
-#           usage: A usage description value.
-#           stream_object: The stream object (instance of Stream).
-#         """
-#         super(PcapEvent, self).__init__(timestamp, usage)
-#
-#         self.source_ip = stream_object.source_ip
-#         self.dest_ip = stream_object.dest_ip
-#         self.source_port = stream_object.source_port
-#         self.dest_port = stream_object.dest_port
-#         self.protocol = stream_object.protocol
-#         self.size = stream_object.size
-#         self.stream_type, self.protocol_data = stream_object.SpecialTypes()
-#         self.first_packet_id = min(stream_object.packet_id)
-#         self.last_packet_id = max(stream_object.packet_id)
-#         self.packet_count = len(stream_object.packet_id)
-#         self.stream_data = repr(stream_object.stream_data[:50])
-#
-#
-# class PcapParser(interface.FileObjectParser):
-#     """Parses PCAP files."""
-#
-#     NAME = u'pcap'
-#     DESCRIPTION = u'Parser for PCAP files.'
-#
-#     def _ParseIPPacket(
-#             self, connections, trunc_list, packet_number, timestamp,
-#             packet_data_size, ip_packet):
-#         """Parses an IP packet.
-#
-#         Args:
-#           connections: A dictionary object to track the IP connections.
-#           trunc_list: A list of packets that truncated strangely and could
-#                       not be turned into a stream.
-#           packet_number: The PCAP packet number, where 1 is the first packet.
-#           timestamp: The PCAP packet timestamp.
-#           packet_data_size: The packet data size.
-#           ip_packet: The IP packet (instance of dpkt.ip.IP).
-#         """
-#         packet_values = [timestamp, packet_number, ip_packet, packet_data_size]
-#
-#         source_ip_address = socket.inet_ntoa(ip_packet.src)
-#         destination_ip_address = socket.inet_ntoa(ip_packet.dst)
-#
-#         if ip_packet.p == dpkt.ip.IP_PROTO_TCP:
-#             # Later versions of dpkt seem to return a string instead of a TCP object.
-#             if isinstance(ip_packet.data, str):
-#                 try:
-#                     tcp = dpkt.tcp.TCP(ip_packet.data)
-#                 except (dpkt.NeedData, dpkt.UnpackError):
-#                     trunc_list.append(packet_values)
-#                     return
-#
-#             else:
-#                 tcp = ip_packet.data
-#
-#             stream_key = u'tcp: {0:s}:{1:d} > {2:s}:{3:d}'.format(
-#                 source_ip_address, tcp.sport, destination_ip_address, tcp.dport)
-#
-#             if stream_key in connections:
-#                 connections[stream_key].AddPacket(packet_values, tcp)
-#             else:
-#                 connections[stream_key] = Stream(
-#                     packet_values, tcp, source_ip_address, destination_ip_address,
-#                     u'TCP')
-#
-#         elif ip_packet.p == dpkt.ip.IP_PROTO_UDP:
-#             # Later versions of dpkt seem to return a string instead of an UDP object.
-#             if isinstance(ip_packet.data, str):
-#                 try:
-#                     udp = dpkt.udp.UDP(ip_packet.data)
-#                 except (dpkt.NeedData, dpkt.UnpackError):
-#                     trunc_list.append(packet_values)
-#                     return
-#
-#             else:
-#                 udp = ip_packet.data
-#
-#             stream_key = u'udp: {0:s}:{1:d} > {2:s}:{3:d}'.format(
-#                 source_ip_address, udp.sport, destination_ip_address, udp.dport)
-#
-#             if stream_key in connections:
-#                 connections[stream_key].AddPacket(packet_values, udp)
-#             else:
-#                 connections[stream_key] = Stream(
-#                     packet_values, udp, source_ip_address, destination_ip_address,
-#                     u'UDP')
-#
-#         elif ip_packet.p == dpkt.ip.IP_PROTO_ICMP:
-#             # Later versions of dpkt seem to return a string instead of
-#             # an ICMP object.
-#             if isinstance(ip_packet.data, str):
-#                 icmp = dpkt.icmp.ICMP(ip_packet.data)
-#             else:
-#                 icmp = ip_packet.data
-#
-#             stream_key = u'icmp: {0:d} {1:s} > {2:s}'.format(
-#                 timestamp, source_ip_address, destination_ip_address)
-#
-#             if stream_key in connections:
-#                 connections[stream_key].AddPacket(packet_values, icmp)
-#             else:
-#                 connections[stream_key] = Stream(
-#                     packet_values, icmp, source_ip_address, destination_ip_address,
-#                     u'ICMP')
-#
-#     def _ParseOtherPacket(self, packet_values):
-#         """Parses a non-IP packet.
-#
-#         Args:
-#           packet_values: list of packet values
-#
-#         Returns:
-#           A stream object (instance of Stream) or None if the packet data
-#           is not supported.
-#         """
-#         ether = packet_values[2]
-#         stream_object = None
-#
-#         if ether.type == dpkt.ethernet.ETH_TYPE_ARP:
-#             arp = ether.data
-#             arp_data = []
-#             stream_object = Stream(
-#                 packet_values, arp, binascii.hexlify(ether.src),
-#                 binascii.hexlify(ether.dst), u'ARP')
-#
-#             if arp.op == dpkt.arp.ARP_OP_REQUEST:
-#                 arp_data.append(u'arp request: target IP = ')
-#                 arp_data.append(socket.inet_ntoa(arp.tpa))
-#                 stream_object.protocol_data = u' '.join(arp_data)
-#
-#             elif arp.op == dpkt.arp.ARP_OP_REPLY:
-#                 arp_data.append(u'arp reply: target IP = ')
-#                 arp_data.append(socket.inet_ntoa(arp.tpa))
-#                 arp_data.append(u' target MAC = ')
-#                 arp_data.append(binascii.hexlify(arp.tha))
-#                 stream_object.protocol_data = u' '.join(arp_data)
-#
-#             elif arp.op == dpkt.arp.ARP_OP_REVREQUEST:
-#                 arp_data.append(u'arp protocol address request: target IP = ')
-#                 arp_data.append(socket.inet_ntoa(arp.tpa))
-#                 stream_object.protocol_data = u' '.join(arp_data)
-#
-#             elif arp.op == dpkt.arp.ARP_OP_REVREPLY:
-#                 arp_data.append(u'arp protocol address reply: target IP = ')
-#                 arp_data.append(socket.inet_ntoa(arp.tpa))
-#                 arp_data.append(u' target MAC = ')
-#                 arp_data.append(binascii.hexlify(arp.tha))
-#                 stream_object.protocol_data = u' '.join(arp_data)
-#
-#         elif ether.type == dpkt.ethernet.ETH_TYPE_IP6:
-#             ip6 = ether.data
-#             stream_object = Stream(
-#                 packet_values, ether.data, binascii.hexlify(ip6.src),
-#                 binascii.hexlify(ip6.dst), u'IPv6')
-#             stream_object.protocol_data = u'IPv6'
-#
-#         elif ether.type == dpkt.ethernet.ETH_TYPE_CDP:
-#             stream_object = Stream(
-#                 packet_values, ether.data, binascii.hexlify(ether.src),
-#                 binascii.hexlify(ether.dst), u'CDP')
-#             stream_object.protocol_data = u'CDP'
-#
-#         elif ether.type == dpkt.ethernet.ETH_TYPE_DTP:
-#             stream_object = Stream(
-#                 packet_values, ether.data, binascii.hexlify(ether.src),
-#                 binascii.hexlify(ether.dst), u'DTP')
-#             stream_object.protocol_data = u'DTP'
-#
-#         elif ether.type == dpkt.ethernet.ETH_TYPE_REVARP:
-#             stream_object = Stream(
-#                 packet_values, ether.data, binascii.hexlify(ether.src),
-#                 binascii.hexlify(ether.dst), u'RARP')
-#             stream_object.protocol_data = u'Reverse ARP'
-#
-#         elif ether.type == dpkt.ethernet.ETH_TYPE_8021Q:
-#             stream_object = Stream(
-#                 packet_values, ether.data, binascii.hexlify(ether.src),
-#                 binascii.hexlify(ether.dst), u'8021Q packet')
-#             stream_object.protocol_data = u'8021Q packet'
-#
-#         elif ether.type == dpkt.ethernet.ETH_TYPE_IPX:
-#             stream_object = Stream(
-#                 packet_values, ether.data, binascii.hexlify(ether.src),
-#                 binascii.hexlify(ether.dst), u'IPX')
-#             stream_object.protocol_data = u'IPX'
-#
-#         elif ether.type == dpkt.ethernet.ETH_TYPE_PPP:
-#             stream_object = Stream(
-#                 packet_values, ether.data, binascii.hexlify(ether.src),
-#                 binascii.hexlify(ether.dst), u'PPP')
-#             stream_object.protocol_data = u'PPP'
-#
-#         elif ether.type == dpkt.ethernet.ETH_TYPE_MPLS:
-#             stream_object = Stream(
-#                 packet_values, ether.data, binascii.hexlify(ether.src),
-#                 binascii.hexlify(ether.dst), u'MPLS')
-#             stream_object.protocol_data = u'MPLS'
-#
-#         elif ether.type == dpkt.ethernet.ETH_TYPE_MPLS_MCAST:
-#             stream_object = Stream(
-#                 packet_values, ether.data, binascii.hexlify(ether.src),
-#                 binascii.hexlify(ether.dst), u'MPLS')
-#             stream_object.protocol_data = u'MPLS MCAST'
-#
-#         elif ether.type == dpkt.ethernet.ETH_TYPE_PPPoE_DISC:
-#             stream_object = Stream(
-#                 packet_values, ether.data, binascii.hexlify(ether.src),
-#                 binascii.hexlify(ether.dst), u'PPOE')
-#             stream_object.protocol_data = u'PPoE Disc packet'
-#
-#         elif ether.type == dpkt.ethernet.ETH_TYPE_PPPoE:
-#             stream_object = Stream(
-#                 packet_values, ether.data, binascii.hexlify(ether.src),
-#                 binascii.hexlify(ether.dst), u'PPPoE')
-#             stream_object.protocol_data = u'PPPoE'
-#
-#         elif ether.type == 0x2452:
-#             stream_object = Stream(
-#                 packet_values, ether.data, binascii.hexlify(ether.src),
-#                 binascii.hexlify(ether.dst), u'802.11')
-#             stream_object.protocol_data = u'802.11'
-#
-#         return stream_object
-#
-#     def _ParseOtherStreams(self, other_list, trunc_list):
-#         """Process PCAP packets that are not IP packets.
-#
-#         For all packets that were not IP packets, create stream containers
-#         depending on the type of packet.
-#
-#         Args:
-#           other_list: List of non-ip packets.
-#           trunc_list: A list of packets that truncated strangely and could
-#                       not be turned into a stream.
-#
-#         Returns:
-#           A list of stream objects (instances of Stream).
-#         """
-#         other_streams = []
-#
-#         for packet_values in other_list:
-#             stream_object = self._ParseOtherPacket(packet_values)
-#             if stream_object:
-#                 other_streams.append(stream_object)
-#
-#         for packet_values in trunc_list:
-#             ip_packet = packet_values[2]
-#
-#             source_ip_address = socket.inet_ntoa(ip_packet.src)
-#             destination_ip_address = socket.inet_ntoa(ip_packet.dst)
-#             stream_object = Stream(
-#                 packet_values, ip_packet.data, source_ip_address,
-#                 destination_ip_address, u'BAD')
-#             stream_object.protocol_data = u'Bad truncated IP packet'
-#             other_streams.append(stream_object)
-#
-#         return other_streams
-#
-#     def ParseFileObject(self, parser_mediator, file_object, **kwargs):
-#         """Parses a PCAP file-like object.
-#
-#         Args:
-#           parser_mediator: A parser mediator object (instance of ParserMediator).
-#           file_object: A file-like object.
-#
-#         Raises:
-#           UnableToParseFile: when the file cannot be parsed.
-#         """
-#         data = file_object.read(dpkt.pcap.FileHdr.__hdr_len__)
-#
-#         try:
-#             file_header = dpkt.pcap.FileHdr(data)
-#             packet_header_class = dpkt.pcap.PktHdr
-#
-#         except (dpkt.NeedData, dpkt.UnpackError) as exception:
-#             raise errors.UnableToParseFile(
-#                 u'[{0:s}] unable to parse file: {1:s} with error: {2:s}'.format(
-#                     self.NAME, parser_mediator.GetDisplayName(), exception))
-#
-#         if file_header.magic == dpkt.pcap.PMUDPCT_MAGIC:
-#             try:
-#                 file_header = dpkt.pcap.LEFileHdr(data)
-#                 packet_header_class = dpkt.pcap.LEPktHdr
-#
-#             except (dpkt.NeedData, dpkt.UnpackError) as exception:
-#                 raise errors.UnableToParseFile(
-#                     u'[{0:s}] unable to parse file: {1:s} with error: {2:s}'.format(
-#                         self.NAME, parser_mediator.GetDisplayName(), exception))
-#
-#         elif file_header.magic != dpkt.pcap.TCPDUMP_MAGIC:
-#             raise errors.UnableToParseFile(u'Unsupported file signature')
-#
-#         packet_number = 1
-#         connections = {}
-#         other_list = []
-#         trunc_list = []
-#
-#         data = file_object.read(dpkt.pcap.PktHdr.__hdr_len__)
-#         while data:
-#             packet_header = packet_header_class(data)
-#             timestamp = (packet_header.tv_sec * 1000000) + packet_header.tv_usec
-#             packet_data = file_object.read(packet_header.caplen)
-#
-#             ethernet_frame = dpkt.ethernet.Ethernet(packet_data)
-#
-#             if ethernet_frame.type == dpkt.ethernet.ETH_TYPE_IP:
-#                 self._ParseIPPacket(
-#                     connections, trunc_list, packet_number, timestamp,
-#                     len(ethernet_frame), ethernet_frame.data)
-#
-#             else:
-#                 packet_values = [
-#                     timestamp, packet_number, ethernet_frame, len(ethernet_frame)]
-#                 other_list.append(packet_values)
-#
-#             packet_number += 1
-#             data = file_object.read(dpkt.pcap.PktHdr.__hdr_len__)
-#
-#         other_streams = self._ParseOtherStreams(other_list, trunc_list)
-#
-#         for stream_object in sorted(
-#                 connections.values(), key=operator.attrgetter(u'start_time')):
-#
-#             if not stream_object.protocol == u'ICMP':
-#                 stream_object.Clean()
-#
-#             event_objects = [
-#                 PcapEvent(
-#                     min(stream_object.timestamps),
-#                     eventdata.EventTimestamp.START_TIME, stream_object),
-#                 PcapEvent(
-#                     max(stream_object.timestamps),
-#                     eventdata.EventTimestamp.END_TIME, stream_object)]
-#
-#             parser_mediator.ProduceEvents(event_objects)
-#
-#         for stream_object in other_streams:
-#             event_objects = [
-#                 PcapEvent(
-#                     min(stream_object.timestamps),
-#                     eventdata.EventTimestamp.START_TIME, stream_object),
-#                 PcapEvent(
-#                     max(stream_object.timestamps),
-#                     eventdata.EventTimestamp.END_TIME, stream_object)]
-#             parser_mediator.ProduceEvents(event_objects)
-#
-#
-# manager.ParsersManager.RegisterParser(PcapParser)
+# Pcap事件
+class PcapEvent(time_events.PosixTimeEvent):
+    """Convenience class for a PCAP record event."""
+    # 数据类型
+    DATA_TYPE = u'metadata:pcap'
+
+    def __init__(self, timestamp, usage, stream_object):
+        """Initializes the event.
+        # 初始化事件
+        Args:
+            # 参数，使用时间戳作为的POSIX值
+          timestamp: The POSIX value of the timestamp.
+            # 一个描述的值
+          usage: A usage description value.
+            # Stream的实例
+          stream_object: The stream object (instance of Stream).
+        """
+        # 继承父类的一个方法
+        super(PcapEvent, self).__init__(timestamp, usage)
+        # Stream的源IP
+        self.source_ip = stream_object.source_ip
+        # Stream的目标IP
+        self.dest_ip = stream_object.dest_ip
+        # Stream的源端口
+        self.source_port = stream_object.source_port
+        # Stream的目标端口
+        self.dest_port = stream_object.dest_port
+        # Stream的协议
+        self.protocol = stream_object.protocol
+        # Stream的大小
+        self.size = stream_object.size
+        # Stream的格式和承载数据
+        self.stream_type, self.protocol_data = stream_object.SpecialTypes()
+        # Stream的第一个包的id
+        self.first_packet_id = min(stream_object.packet_id)
+        # Stream的最后一个包的id
+        self.last_packet_id = max(stream_object.packet_id)
+        # Stream的包数量的统计
+        self.packet_count = len(stream_object.packet_id)
+        # Stream的非承载数据
+        self.stream_data = repr(stream_object.stream_data[:50])
+
+
+# Pcap解析器
+class PcapParser(interface.FileObjectParser):
+    """Parses PCAP files."""
+    # 名称
+    NAME = u'pcap'
+    # 描述
+    DESCRIPTION = u'Parser for PCAP files.'
+
+    # 解析IP包
+    def _ParseIPPacket(
+            self, connections, trunc_list, packet_number, timestamp,
+            packet_data_size, ip_packet):
+        """Parses an IP packet.
+        # 解析一个IP 包
+        Args:
+            # 参数
+            # 一个字典对象的跟踪IP连接。
+          connections: A dictionary object to track the IP connections.
+            # 一个源自数据包的列表，记录了包的关联数据
+          trunc_list: A list of packets that truncated strangely and could
+                      not be turned into a stream.
+            # 包号
+          packet_number: The PCAP packet number, where 1 is the first packet.
+            # PCAP包的时间戳
+          timestamp: The PCAP packet timestamp.
+            # 包的尺寸
+          packet_data_size: The packet data size.
+            # dpkt.ip.IP的实例（一个IP包）
+          ip_packet: The IP packet (instance of dpkt.ip.IP).
+        """
+        # 包的值，一个列表
+        packet_values = [timestamp, packet_number, ip_packet, packet_data_size]
+        # 源地址，用socket.inet_ntoa解析ip_packet的源地址
+        source_ip_address = socket.inet_ntoa(ip_packet.src)
+        # 目标地址，用socket.inet_ntoa解析ip_packet的目标地址
+        destination_ip_address = socket.inet_ntoa(ip_packet.dst)
+        # 如果ip_packet的协议为dpkt.ip.IP_PROTO_TCP类型，获取到TCP/IP流的数据
+        if ip_packet.p == dpkt.ip.IP_PROTO_TCP:
+            # Later versions of dpkt seem to return a string instead of a TCP object.
+            # 判断一个量是否是相应的类型（ip_packet.data是否为字符串)
+            if isinstance(ip_packet.data, str):
+                try:
+                    tcp = dpkt.tcp.TCP(ip_packet.data)
+                except (dpkt.NeedData, dpkt.UnpackError):
+                    trunc_list.append(packet_values)
+                    return
+
+            else:
+                tcp = ip_packet.data
+            # 设置Stream流的值
+            stream_key = u'tcp: {0:s}:{1:d} > {2:s}:{3:d}'.format(
+                source_ip_address, tcp.sport, destination_ip_address, tcp.dport)
+            # 设定Stream流的值
+            if stream_key in connections:
+                connections[stream_key].AddPacket(packet_values, tcp)
+            else:
+                connections[stream_key] = Stream(
+                    packet_values, tcp, source_ip_address, destination_ip_address,
+                    u'TCP')
+        # 如果ip_packet的协议为dpkt.ip.IP_PROTO_UDP类型，获取到UDP流的数据
+        elif ip_packet.p == dpkt.ip.IP_PROTO_UDP:
+            # Later versions of dpkt seem to return a string instead of an UDP object.
+            if isinstance(ip_packet.data, str):
+                try:
+                    udp = dpkt.udp.UDP(ip_packet.data)
+                except (dpkt.NeedData, dpkt.UnpackError):
+                    trunc_list.append(packet_values)
+                    return
+
+            else:
+                udp = ip_packet.data
+
+            stream_key = u'udp: {0:s}:{1:d} > {2:s}:{3:d}'.format(
+                source_ip_address, udp.sport, destination_ip_address, udp.dport)
+
+            if stream_key in connections:
+                connections[stream_key].AddPacket(packet_values, udp)
+            else:
+                connections[stream_key] = Stream(
+                    packet_values, udp, source_ip_address, destination_ip_address,
+                    u'UDP')
+        # 如果ip_packet的协议为dpkt.ip.IP_PROTO_ICMP类型，获取到ICMP流的数据
+        elif ip_packet.p == dpkt.ip.IP_PROTO_ICMP:
+            # Later versions of dpkt seem to return a string instead of
+            # an ICMP object.
+            if isinstance(ip_packet.data, str):
+                icmp = dpkt.icmp.ICMP(ip_packet.data)
+            else:
+                icmp = ip_packet.data
+
+            stream_key = u'icmp: {0:d} {1:s} > {2:s}'.format(
+                timestamp, source_ip_address, destination_ip_address)
+
+            if stream_key in connections:
+                connections[stream_key].AddPacket(packet_values, icmp)
+            else:
+                connections[stream_key] = Stream(
+                    packet_values, icmp, source_ip_address, destination_ip_address,
+                    u'ICMP')
+
+    # 解析其他包
+    def _ParseOtherPacket(self, packet_values):
+        """Parses a non-IP packet.
+        # 解析非IP数据包
+        Args:
+          packet_values: list of packet values
+          # 包的数据
+
+        # 返回一个Stream实例 或者一个不支持的数据包
+        Returns:
+          A stream object (instance of Stream) or None if the packet data
+          is not supported.
+        """
+        # packet_values第三个元素（list）
+        ether = packet_values[2]
+        # Stream初始化
+        stream_object = None
+
+        # 如果packet_values的类型为ARP，则解析APR
+        if ether.type == dpkt.ethernet.ETH_TYPE_ARP:
+            arp = ether.data
+            arp_data = []
+            stream_object = Stream(
+                packet_values, arp, binascii.hexlify(ether.src),
+                binascii.hexlify(ether.dst), u'ARP')
+
+            if arp.op == dpkt.arp.ARP_OP_REQUEST:
+                arp_data.append(u'arp request: target IP = ')
+                arp_data.append(socket.inet_ntoa(arp.tpa))
+                stream_object.protocol_data = u' '.join(arp_data)
+
+            elif arp.op == dpkt.arp.ARP_OP_REPLY:
+                arp_data.append(u'arp reply: target IP = ')
+                arp_data.append(socket.inet_ntoa(arp.tpa))
+                arp_data.append(u' target MAC = ')
+                arp_data.append(binascii.hexlify(arp.tha))
+                stream_object.protocol_data = u' '.join(arp_data)
+
+            elif arp.op == dpkt.arp.ARP_OP_REVREQUEST:
+                arp_data.append(u'arp protocol address request: target IP = ')
+                arp_data.append(socket.inet_ntoa(arp.tpa))
+                stream_object.protocol_data = u' '.join(arp_data)
+
+            elif arp.op == dpkt.arp.ARP_OP_REVREPLY:
+                arp_data.append(u'arp protocol address reply: target IP = ')
+                arp_data.append(socket.inet_ntoa(arp.tpa))
+                arp_data.append(u' target MAC = ')
+                arp_data.append(binascii.hexlify(arp.tha))
+                stream_object.protocol_data = u' '.join(arp_data)
+        # 如果packet_values的类型为IPv6，则解析IPv6
+        elif ether.type == dpkt.ethernet.ETH_TYPE_IP6:
+            ip6 = ether.data
+            stream_object = Stream(
+                packet_values, ether.data, binascii.hexlify(ip6.src),
+                binascii.hexlify(ip6.dst), u'IPv6')
+            stream_object.protocol_data = u'IPv6'
+        # 如果packet_values的类型为CDP，则解析CDP
+        elif ether.type == dpkt.ethernet.ETH_TYPE_CDP:
+            stream_object = Stream(
+                packet_values, ether.data, binascii.hexlify(ether.src),
+                binascii.hexlify(ether.dst), u'CDP')
+            stream_object.protocol_data = u'CDP'
+        # 如果packet_values的类型为DTP，则解析DTP
+        elif ether.type == dpkt.ethernet.ETH_TYPE_DTP:
+            stream_object = Stream(
+                packet_values, ether.data, binascii.hexlify(ether.src),
+                binascii.hexlify(ether.dst), u'DTP')
+            stream_object.protocol_data = u'DTP'
+        # 如果packet_values的类型为ARP反向解析，则解析REVARP
+        elif ether.type == dpkt.ethernet.ETH_TYPE_REVARP:
+            stream_object = Stream(
+                packet_values, ether.data, binascii.hexlify(ether.src),
+                binascii.hexlify(ether.dst), u'RARP')
+            stream_object.protocol_data = u'Reverse ARP'
+        # 如果packet_values的类型为8021Q，则解析8021Q
+        elif ether.type == dpkt.ethernet.ETH_TYPE_8021Q:
+            stream_object = Stream(
+                packet_values, ether.data, binascii.hexlify(ether.src),
+                binascii.hexlify(ether.dst), u'8021Q packet')
+            stream_object.protocol_data = u'8021Q packet'
+        # 如果packet_values的类型为IPX，则解析IPX
+        elif ether.type == dpkt.ethernet.ETH_TYPE_IPX:
+            stream_object = Stream(
+                packet_values, ether.data, binascii.hexlify(ether.src),
+                binascii.hexlify(ether.dst), u'IPX')
+            stream_object.protocol_data = u'IPX'
+        # 如果packet_values的类型为PPP，则解析PPP
+        elif ether.type == dpkt.ethernet.ETH_TYPE_PPP:
+            stream_object = Stream(
+                packet_values, ether.data, binascii.hexlify(ether.src),
+                binascii.hexlify(ether.dst), u'PPP')
+            stream_object.protocol_data = u'PPP'
+        # 如果packet_values的类型为MPLS，则解析MPLS
+        elif ether.type == dpkt.ethernet.ETH_TYPE_MPLS:
+            stream_object = Stream(
+                packet_values, ether.data, binascii.hexlify(ether.src),
+                binascii.hexlify(ether.dst), u'MPLS')
+            stream_object.protocol_data = u'MPLS'
+        # 如果packet_values的类型为MPLS_MCAST，则解析MPLS_MCAST
+        elif ether.type == dpkt.ethernet.ETH_TYPE_MPLS_MCAST:
+            stream_object = Stream(
+                packet_values, ether.data, binascii.hexlify(ether.src),
+                binascii.hexlify(ether.dst), u'MPLS')
+            stream_object.protocol_data = u'MPLS MCAST'
+        # 如果packet_values的类型为PPPoE_DISC，则解析PPPoE_DISC
+        elif ether.type == dpkt.ethernet.ETH_TYPE_PPPoE_DISC:
+            stream_object = Stream(
+                packet_values, ether.data, binascii.hexlify(ether.src),
+                binascii.hexlify(ether.dst), u'PPOE')
+            stream_object.protocol_data = u'PPoE Disc packet'
+        # 如果packet_values的类型为PPPoE，则解析PPPoE
+        elif ether.type == dpkt.ethernet.ETH_TYPE_PPPoE:
+            stream_object = Stream(
+                packet_values, ether.data, binascii.hexlify(ether.src),
+                binascii.hexlify(ether.dst), u'PPPoE')
+            stream_object.protocol_data = u'PPPoE'
+        # 如果packet_values的类型为802.11，则解析802.11
+        elif ether.type == 0x2452:
+            stream_object = Stream(
+                packet_values, ether.data, binascii.hexlify(ether.src),
+                binascii.hexlify(ether.dst), u'802.11')
+            stream_object.protocol_data = u'802.11'
+
+        return stream_object
+
+    # 解析其他Stream
+    def _ParseOtherStreams(self, other_list, trunc_list):
+        # 解析非IP包的PCAP包
+        """Process PCAP packets that are not IP packets.
+
+        # 所有的数据包为非IP数据包
+        For all packets that were not IP packets, create stream containers
+        depending on the type of packet.
+
+        Args:
+            # 非IP数据包列表
+          other_list: List of non-ip packets.
+            # 一个源自数据包的列表，记录了包的关联数据
+          trunc_list: A list of packets that truncated strangely and could
+                      not be turned into a stream.
+
+            # 返回一个Stream的实例
+        Returns:
+          A list of stream objects (instances of Stream).
+        """
+        # 初始化other_streams的Stream实例
+        other_streams = []
+
+        for packet_values in other_list:
+            stream_object = self._ParseOtherPacket(packet_values)
+            if stream_object:
+                other_streams.append(stream_object)
+
+        for packet_values in trunc_list:
+            ip_packet = packet_values[2]
+
+            source_ip_address = socket.inet_ntoa(ip_packet.src)
+            destination_ip_address = socket.inet_ntoa(ip_packet.dst)
+            stream_object = Stream(
+                packet_values, ip_packet.data, source_ip_address,
+                destination_ip_address, u'BAD')
+            stream_object.protocol_data = u'Bad truncated IP packet'
+            other_streams.append(stream_object)
+
+        return other_streams
+
+    # 解析文件对象
+    def ParseFileObject(self, parser_mediator, file_object, **kwargs):
+        """Parses a PCAP file-like object.
+
+        # 参数：
+        Args:
+            # ParserMediator实例
+          parser_mediator: A parser mediator object (instance of ParserMediator).
+            # 文件对象
+          file_object: A file-like object.
+
+        Raises:
+            # 不能够解析文件
+          UnableToParseFile: when the file cannot be parsed.
+        """
+        data = file_object.read(dpkt.pcap.FileHdr.__hdr_len__)
+
+        try:
+            file_header = dpkt.pcap.FileHdr(data)
+            packet_header_class = dpkt.pcap.PktHdr
+
+        except (dpkt.NeedData, dpkt.UnpackError) as exception:
+            raise errors.UnableToParseFile(
+                u'[{0:s}] unable to parse file: {1:s} with error: {2:s}'.format(
+                    self.NAME, parser_mediator.GetDisplayName(), exception))
+
+        if file_header.magic == dpkt.pcap.PMUDPCT_MAGIC:
+            try:
+                file_header = dpkt.pcap.LEFileHdr(data)
+                packet_header_class = dpkt.pcap.LEPktHdr
+
+            except (dpkt.NeedData, dpkt.UnpackError) as exception:
+                raise errors.UnableToParseFile(
+                    u'[{0:s}] unable to parse file: {1:s} with error: {2:s}'.format(
+                        self.NAME, parser_mediator.GetDisplayName(), exception))
+
+        elif file_header.magic != dpkt.pcap.TCPDUMP_MAGIC:
+            raise errors.UnableToParseFile(u'Unsupported file signature')
+
+        packet_number = 1
+        connections = {}
+        other_list = []
+        trunc_list = []
+
+        data = file_object.read(dpkt.pcap.PktHdr.__hdr_len__)
+        while data:
+            packet_header = packet_header_class(data)
+            timestamp = (packet_header.tv_sec * 1000000) + packet_header.tv_usec
+            packet_data = file_object.read(packet_header.caplen)
+
+            ethernet_frame = dpkt.ethernet.Ethernet(packet_data)
+
+            if ethernet_frame.type == dpkt.ethernet.ETH_TYPE_IP:
+                self._ParseIPPacket(
+                    connections, trunc_list, packet_number, timestamp,
+                    len(ethernet_frame), ethernet_frame.data)
+
+            else:
+                packet_values = [
+                    timestamp, packet_number, ethernet_frame, len(ethernet_frame)]
+                other_list.append(packet_values)
+
+            packet_number += 1
+            data = file_object.read(dpkt.pcap.PktHdr.__hdr_len__)
+
+        other_streams = self._ParseOtherStreams(other_list, trunc_list)
+
+        for stream_object in sorted(
+                connections.values(), key=operator.attrgetter(u'start_time')):
+
+            if not stream_object.protocol == u'ICMP':
+                stream_object.Clean()
+
+            event_objects = [
+                PcapEvent(
+                    min(stream_object.timestamps),
+                    eventdata.EventTimestamp.START_TIME, stream_object),
+                PcapEvent(
+                    max(stream_object.timestamps),
+                    eventdata.EventTimestamp.END_TIME, stream_object)]
+
+            parser_mediator.ProduceEvents(event_objects)
+
+        for stream_object in other_streams:
+            event_objects = [
+                PcapEvent(
+                    min(stream_object.timestamps),
+                    eventdata.EventTimestamp.START_TIME, stream_object),
+                PcapEvent(
+                    max(stream_object.timestamps),
+                    eventdata.EventTimestamp.END_TIME, stream_object)]
+            parser_mediator.ProduceEvents(event_objects)
+
+
+manager.ParsersManager.RegisterParser(PcapParser)
