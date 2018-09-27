@@ -7,11 +7,6 @@ import socket
 
 import dpkt
 
-from plaso.containers import time_events
-from plaso.lib import errors
-from plaso.lib import eventdata
-from plaso.parsers import interface
-from plaso.parsers import manager
 
 __author__ = 'Dominique Kilman (lexistar97@gmail.com)'
 

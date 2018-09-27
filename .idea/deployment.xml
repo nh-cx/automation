@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="root@192.168.8.229:22">
+  <component name="PublishConfigData" autoUpload="Always" serverName="root@192.168.8.229:22" uploadOnCheckin="be409b0c-8a5e-41b3-a49b-f94f4a640db7">
     <serverData>
+      <paths name="hoperun@192.168.8.2:22">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/hoperun/automation" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="root@192.168.8.229:22">
         <serverdata>
           <mappings>
@@ -10,6 +17,7 @@
         </serverdata>
       </paths>
     </serverData>
+    <option name="myUploadOnCheckinName" value="root@192.168.8.229:22" />
     <option name="myAutoUpload" value="ALWAYS" />
   </component>
 </project>

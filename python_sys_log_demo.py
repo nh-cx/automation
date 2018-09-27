@@ -13,7 +13,6 @@ def main():
     import dpkt
     from sys import exit
     import python_TZSP
-    # import pcap_log
     # import python_sys_log_sql
     # 配置连接IP和端口号
     UDP_IP = '0.0.0.0'
@@ -161,16 +160,38 @@ def main():
             encapsulated_packet_data = python_TZSP.get_encapsulated_packet(data)
             # sor_str = ''.join('\\x%02x' % b for b in encapsulated_packet_data)
             eth = dpkt.ethernet.Ethernet(encapsulated_packet_data)
-            ip = eth.data
+            # ip = eth.data
+            # =================80=================================
+            # stream_data = eth.data.data.data
+            # if stream_data != '\x00':
+            #     print('version::::::', dpkt.http.Request(eth.data.data.data).version)
+            #     print('method::::::', dpkt.http.Request(eth.data.data.data).method)
+            #     for i in dpkt.http.Request(eth.data.data.data).headers:
+            #         print(dpkt.http.Request(eth.data.data.data).headers[i])
+            #     print('uri::::::', dpkt.http.Request(eth.data.data.data).uri)
+            # else:
+            #     print('Other stream :', 'stream_data')
+            # =================80=================================
+
+            # ================443=================================
+            stream_data = eth.data.data.data
+            ssl = dpkt.ssl.SSLFactory(eth.data.data.data)
+
+            print("ssl:::", ssl)
+            if b'\x03\x01' == stream_data[1:3]:
+                ssl = dpkt.ssl.SSL2(stream_data)
+                print(ssl)
+            # ================443=================================
+
 
             # tcp_stream = encapsulated_packet_data[14:]
             # tcp = dpkt.tcp.TCP(eth.data.data)
             # tcp_str = ''.join(['\\x%02x' % b for b in tcp])
             # print(eth.data.data.data)
-            type_str, details = Get_Types(eth.data.data.data)
-            if type_str != 'other':
-                print(type_str)
-                print(type(details[7]))
+            # type_str, details = Get_Types(eth.data.data.data)
+            # if type_str != 'other':
+            #     print(type_str)
+            #     print(type(details[6]))
         except Exception as e:
             print(str(e))
             continue
